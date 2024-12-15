@@ -16,7 +16,8 @@
 
 import logging
 from typing import Dict, List
-
+import jieba
+from pypinyin import lazy_pinyin, Style
 import tacotron_cleaner.cleaners
 
 try:
@@ -58,13 +59,53 @@ class Tokenizer(object):
 
         self.vocab_size = len(self.token2id)
 
+    # copy from https://github.com/SWivid/F5-TTS/blob/main/src/f5_tts/model/utils.py
+    def convert_char_to_pinyin(self, text_list, polyphone=True):
+        final_text_list = []
+        custom_trans = str.maketrans(
+            {"（": "(", "）": ")", "：": ":", "；": ",", ";": ",", "“": '"', "”": '"', "‘": "'", "’": "'"}
+        )  # add custom trans here, to address oov
+    
+        def is_chinese(c):
+            return (
+                "\u3100" <= c <= "\u9fff"  # common chinese characters
+            )
+    
+        for text in text_list:
+            char_list = []
+            text = text.translate(custom_trans)
+            for seg in jieba.cut(text):
+                seg_byte_len = len(bytes(seg, "UTF-8"))
+                if seg_byte_len == len(seg):  # if pure alphabets and symbols
+                    if char_list and seg_byte_len > 1 and char_list[-1] not in " :'\"":
+                        char_list.append(" ")
+                    char_list.extend(seg)
+                elif polyphone and seg_byte_len == 3 * len(seg):  # if pure east asian characters
+                    seg_ = lazy_pinyin(seg, style=Style.TONE3, tone_sandhi=True)
+                    for i, c in enumerate(seg):
+                        if is_chinese(c):
+                            char_list.append(" ")
+                        char_list.append(seg_[i])
+                else:  # if mixed characters, alphabets and symbols
+                    for c in seg:
+                        if ord(c) < 256:
+                            char_list.extend(c)
+                        elif is_chinese(c):
+                            char_list.append(" ")
+                            char_list.extend(lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True))
+                        else:
+                            char_list.append(c)
+            final_text_list.append(char_list)
+    
+        return final_text_list
+
     def texts_to_token_ids(
         self,
         texts: List[str],
         intersperse_blank: bool = True,
         add_sos: bool = False,
         add_eos: bool = False,
-        lang: str = "en-us",
+        lang: str = "cmn",
     ) -> List[List[int]]:
         """
         Args:
@@ -82,7 +123,11 @@ class Tokenizer(object):
         Returns:
           Return a list of token id list [utterance][token_id]
         """
-        token_ids_list = []
+        if lang in ['cmn', 'zh-cn']:
+            tokens_list = self.convert_char_to_pinyin(texts)
+            return self.tokens_to_token_ids(tokens_list, intersperse_blank, add_sos, add_eos)
+
+        '''token_ids_list = []
 
         for text in texts:
             # Text normalization
@@ -109,7 +154,7 @@ class Tokenizer(object):
 
             token_ids_list.append(token_ids)
 
-        return token_ids_list
+        return token_ids_list'''
 
     def tokens_to_token_ids(
         self,

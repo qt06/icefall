@@ -39,6 +39,13 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--lang",
+        type=str,
+        default="cmn",
+        help="the language for  tokens",
+    )
+
+    parser.add_argument(
         "--input-text",
         type=str,
         required=True,
@@ -150,7 +157,7 @@ def main():
     model = OnnxModel(params.acoustic_model)
     vocoder = OnnxHifiGANModel(params.vocoder)
     text = params.input_text
-    x = model.tokenizer.texts_to_token_ids([text], add_sos=True, add_eos=True)
+    x = model.tokenizer.texts_to_token_ids([text], add_sos=True, add_eos=True, lang=params.lang)
     x = torch.tensor(x, dtype=torch.int64)
 
     start_t = dt.datetime.now()

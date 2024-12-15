@@ -37,19 +37,36 @@ def get_args():
         default=Path("data/tokens.txt"),
         help="Path to the dict that maps the text tokens to IDs",
     )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default="cmn",
+        help="the language for tokens",
+    )
 
     return parser.parse_args()
 
 
-def get_token2id(filename: Path) -> Dict[str, int]:
+def get_token2id(filename: Path, lang: str = "cmn") -> Dict[str, int]:
     """Get a dict that maps token to IDs, and save it to the given filename."""
-    all_tokens = get_espeak_map()  # token: [token_id]
-    all_tokens = {token: token_id[0] for token, token_id in all_tokens.items()}
-    # sort by token_id
-    all_tokens = sorted(all_tokens.items(), key=lambda x: x[1])
+    all_tokens = {}
+    if lang in ["cmn", "zh-cn"]:
+        with open('./local/vocab.txt', 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        all_tokens = {}
+        for i , l in enumerate(lines):
+            t = l.rstrip()
+            if not t:
+                t = ' '
+            all_tokens[t] = i
+    else:
+        all_tokens = get_espeak_map()  # token: [token_id]
+        all_tokens = {token: token_id[0] for token, token_id in all_tokens.items()}
+        # sort by token_id
+        all_tokens = sorted(all_tokens.items(), key=lambda x: x[1])
 
     with open(filename, "w", encoding="utf-8") as f:
-        for token, token_id in all_tokens:
+        for token, token_id in all_tokens.items():
             f.write(f"{token} {token_id}\n")
 
 
@@ -59,4 +76,5 @@ if __name__ == "__main__":
 
     args = get_args()
     out_file = Path(args.tokens)
-    get_token2id(out_file)
+    lang = args.lang
+    get_token2id(out_file, lang)
