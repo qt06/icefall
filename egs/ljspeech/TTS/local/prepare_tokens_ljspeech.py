@@ -32,6 +32,7 @@ import argparse
 
 from lhotse import CutSet, load_manifest
 from piper_phonemize import phonemize_espeak
+from vits.tokenizer import Tokenizer
 
 
 def get_parser():
@@ -49,25 +50,28 @@ def get_parser():
     return parser
 
 
-def prepare_tokens_ljspeech(in_out_dir):
+def prepare_tokens_ljspeech(in_out_dir, lang: str = "cmn"):
     prefix = "ljspeech"
     suffix = "jsonl.gz"
     partition = "all"
 
     cut_set = load_manifest(in_out_dir / f"{prefix}_cuts_{partition}.{suffix}")
-
+    tokenizer = Tokenizer('./data/tokens.txt')
     new_cuts = []
     for cut in cut_set:
         # Each cut only contains one supervision
         assert len(cut.supervisions) == 1, (len(cut.supervisions), cut)
         text = cut.supervisions[0].normalized_text
-        # Text normalization
-        text = tacotron_cleaner.cleaners.custom_english_cleaners(text)
-        # Convert to phonemes
-        tokens_list = phonemize_espeak(text, "en-us")
-        tokens = []
-        for t in tokens_list:
-            tokens.extend(t)
+        if lang in ["cmn", "zh-cn"]:
+            tokens = tokenizer.convert_char_to_pinyin([text])[0]
+        else:
+            # Text normalization
+            text = tacotron_cleaner.cleaners.custom_english_cleaners(text)
+            # Convert to phonemes
+            tokens_list = phonemize_espeak(text, lang)
+            tokens = []
+            for t in tokens_list:
+                tokens.extend(t)
         cut.tokens = tokens
         new_cuts.append(cut)
 

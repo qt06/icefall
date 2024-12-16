@@ -65,6 +65,13 @@ def get_parser():
         help="""Path to vocabulary.""",
     )
 
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default="cmn",
+        help="the language for tokens",
+    )
+
     # The following arguments are used for inference on single text
     parser.add_argument(
         "--input-text",
@@ -118,8 +125,8 @@ def to_waveform(
     return audio.squeeze()
 
 
-def process_text(text: str, tokenizer: Tokenizer, device: str = "cpu") -> dict:
-    x = tokenizer.texts_to_token_ids([text], add_sos=True, add_eos=True)
+def process_text(text: str, tokenizer: Tokenizer, device: str = "cpu", lang: str = "cmn") -> dict:
+    x = tokenizer.texts_to_token_ids([text], add_sos=True, add_eos=True, lang=lang)
     x = torch.tensor(x, dtype=torch.long, device=device)
     x_lengths = torch.tensor([x.shape[-1]], dtype=torch.long, device=device)
     return {"x_orig": text, "x": x, "x_lengths": x_lengths}
@@ -133,9 +140,10 @@ def synthesize(
     length_scale: float,
     temperature: float,
     device: str = "cpu",
+    lang: str = "cmn",
     spks=None,
 ) -> dict:
-    text_processed = process_text(text=text, tokenizer=tokenizer, device=device)
+    text_processed = process_text(text=text, tokenizer=tokenizer, device=device, lang=lang)
     start_t = dt.datetime.now()
     output = model.synthesise(
         text_processed["x"],
@@ -199,6 +207,7 @@ def infer_dataset(
                 length_scale=params.length_scale,
                 temperature=params.temperature,
                 device=device,
+                lang=params.lang,
             )
             output["waveform"] = to_waveform(output["mel"], vocoder, denoiser)
 
@@ -303,6 +312,7 @@ def main():
             length_scale=params.length_scale,
             temperature=params.temperature,
             device=device,
+            lang=params.lang,
         )
         output["waveform"] = to_waveform(output["mel"], vocoder, denoiser)
 
