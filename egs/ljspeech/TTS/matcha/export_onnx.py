@@ -175,7 +175,6 @@ def main():
         meta_data = {
             "model_type": "matcha-tts",
             "language": "English",
-            "voice": "en-us",
             "has_espeak": 1,
             "n_speakers": 1,
             "sample_rate": 22050,
